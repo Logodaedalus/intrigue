@@ -40,7 +40,9 @@ var Player = Class.extend({                 //the default player (human-controll
         var qualityUsed;
         var amountUsed;
 
-        console.log(this.name + " pryed " + target + " with " + amountUsed + " " + qualityUsed + "!");
+        $('#' + playerIndex + 'Action ul').append("<li>" + this.name + " pried " + target + " with " + amountUsed + " " + qualityUsed + "!</li>");
+
+        console.log(this.name + " pried " + target + " with " + amountUsed + " " + qualityUsed + "!</li>");
 
         var outcome = game.pryTurn();            //take action
         
@@ -116,7 +118,8 @@ var RandomBot = Player.extend({
 
         var amountUsed = Math.floor(Math.random()*this.secrets[nonZeroQualities[randomIndex]].value+1);     //pick a random amount
 
-        console.log(this.name + " pryed " + target + " with " + amountUsed + " " + qualityUsed + "!");
+        $('#' + this.name + 'Action ul').append("<li>Round "+ game.currentRound + ": " + this.name + " pried " + target + " with " + amountUsed + " " + qualityUsed + "!</li>");
+        console.log(this.name + " pried " + target + " with " + amountUsed + " " + qualityUsed + "!");
 
         var outcome = game.pryTurn(this.name, target, qualityUsed, amountUsed);            //take action
         
@@ -138,6 +141,7 @@ var RandomBot = Player.extend({
 
         var infoGiven;
 
+        $('#' + this.name + 'Action ul').append("<li>Round "+ game.currentRound + ": " + this.name + " bartered info with " + target);
         console.log(this.name + " bartered info with " + target + ", and offered info of...", infoGiven);
         
         var outcome = game.barterTurn();
@@ -148,7 +152,8 @@ var RandomBot = Player.extend({
     waitWatch: function (game) {
     //pass your turn, but the next action that's taken will be known to you in its full
 
-        console.log(this.name + " is biding their time.");
+        $('#' + this.name + 'Action ul').append("<li>Round "+ game.currentRound + ": " + this.name + " bided their time.");
+        console.log(this.name + " bided their time.");
 
         var outcome = game.waitWatch();
 

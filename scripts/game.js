@@ -59,16 +59,18 @@ var Game = Class.extend({
         this.humansPlaying = 0;
         this.numQualities = 3;           //number of qualities used in game (with tarot we have 338 max)
         this.numStartingChips = 25;      //number of starting chips
+        this.autoPlay = false;           //whether play happens automatically
         
         this.players = [];               //holds players
         this.watchers = [];              //holds who is watching the next action
         this.qualities = [];            //array of quality objects for game
         this.currentPlayer = 0;              //index in players[] whose turn it is
         this.currentRound = 0;
+        this.uiUpdate = [];
 
         this.initQualities();
         this.createPlayers();
-        this.initDisplay();
+        this.initUI();
         this.play();
     },
 
@@ -114,11 +116,67 @@ var Game = Class.extend({
 
     },
 
-    initDisplay: function () {      //create UI
+    initUI: function () {      //create UI
+
+        //create game-wide info window
+        var gameInfoHtml = "<p>Players: "+ this.numPlayers +" ("+ this.humansPlaying +" human / "+ (this.numPlayers - this.humansPlaying) +" bot)</p><p>Current Round: "+ this.currentRound +"/"+ this.rounds +"</p><p>Number of Qualities: "+ this.numQualities +"</p><p>Number of Starting Chips: "+ this.numStartingChips +"</p>";
+        $("#game").append(gameInfoHtml);
+
+        for (var x=0; x < this.players.length; x++) {       //for each player
+
+            var panelHtml;
+
+            if (this.players[x].isAI) {     //if it's a bot, create bot display
+                this.createBotUI(x);
+            }
+            else {      //if it's human, create human display
+                this.createHumanUI(x);
+            }
+        }
+
+        $("#players").tabs();
+
         console.log("initialized display!");
     },
 
-    updateDisplay: function ()  {   //update the UI with values
+    createHumanUI: function (playerIndex) {   //creates the interface for human players
+        jQuery('<li/>', {
+                id: 'player' + playerIndex + 'Tab',
+                html: '<a href="#player'+ playerIndex +'Panel">'+ this.players[playerIndex].name + '</a>',
+            }).appendTo('#UITabs');
+
+        jQuery('<div/>', {
+                class: 'playerWindow',
+                id: 'player' + playerIndex + 'Panel',
+            }).appendTo('#panels');
+    },
+
+    createBotUI: function (playerIndex) {      //creates the interface for bot players
+        
+        jQuery('<li/>', {           //tab
+                id: this.players[playerIndex].name + 'Tab',
+                html: '<a href="#'+ this.players[playerIndex].name +'Panel">'+ this.players[playerIndex].name + '</a>',
+            }).appendTo('#UITabs');
+
+        jQuery('<div/>', {          //main panel
+                class: 'playerWindow',
+                id: this.players[playerIndex].name + 'Panel',
+            }).appendTo('#panels');
+
+        jQuery('<div/>', {          //current info
+                class: 'info',
+                id: this.players[playerIndex].name + 'Info',
+                html: '<h2>Info</h2>',
+            }).appendTo('#' + this.players[playerIndex].name + 'Panel');
+
+        jQuery('<div/>', {          //player actions
+                class: 'playerAction',
+                id: this.players[playerIndex].name + 'Action',
+                html: '<h2>Actions</h2><ul></ul>',
+            }).appendTo('#' + this.players[playerIndex].name + 'Panel');
+    },
+
+    updateUI: function ()  {   //update the UI with values
         console.log("updated display!");
     },
 
@@ -190,5 +248,3 @@ $(document).ready(function(){
         
     });
 });
-
-var game = new Game();

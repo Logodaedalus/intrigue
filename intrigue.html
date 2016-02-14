@@ -1,16 +1,27 @@
 <html>
 <head>
 <script src="scripts/jquery-1.12.0.min.js"></script>
-
-
-</head>
-<body>
-
+<script src="scripts/jquery-ui/jquery-ui.min.js"></script>
 <script src="scripts/tarot.js"></script>
 <script src="scripts/utils.js"></script>
 <script src="scripts/player.js"></script>
 <script src="scripts/game.js"></script>
 
+<link href="scripts/jquery-ui/jquery-ui.theme.css" rel="stylesheet">
+<link href="css/intrigue.css" rel="stylesheet">
+</head>
+<body>
+
+<div id="game"></div>
+
+<div id="players">
+	<ul id="UITabs"></ul>
+	<div id="panels"></div>
+</div>
+
+<script>
+	var game = new Game();			//initializes the whole shebang!
+</script>
 </body>
 
 </html>
