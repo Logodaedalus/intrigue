@@ -17,7 +17,8 @@ To start, just open intrigue.html in your browser
 
 **Wait** - a player can pass their turn and specify a player to watch. The next pry action involving that player will have its details made known to that player.
 
-After some number of rounds, each player gets to guess how many chips each other player has in their category. After everyone's guessed, whoever has the category with the highest error (in chips, not %) between guesses and actual values, wins.
+## Winning ##
+After all rounds are complete, each player guesses how many chips each other player has in their category. After everyone's guessed, whoever has the category with the highest error (in chips, not %) between guesses and actual values, wins.
 
 # Planned Bots
 **Random bot** - establishes a baseline...makes random decisions for everything in the game
