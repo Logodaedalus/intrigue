@@ -1,5 +1,9 @@
 # Intrigue
 
+To start, just open intrigue.html in your browser
+
+# Game Description
+
 -Players start out with some number of "chips" in some number of "categories"
 -Turn-based
 -On each round, a player can either
