@@ -1,3 +1,32 @@
 .playerAction li {
 	margin-bottom:12px;
+	font-size:15px;
+}
+
+.stats {
+	height:400px;
+	border-collapse: collapse;
+}
+
+.tableData {
+	height:300px;
+	border:1px solid white;
+}
+
+.tableData td {
+	width:40px;
+	vertical-align:bottom;
+}
+
+.tableData td div {
+	width:100%;
+	background-color:green;
+
+}
+
+.tableLabel td {
+	color: white;
+    font-size: 10px;
+    transform: rotate(-90deg);
+    text-align:right;
 }
