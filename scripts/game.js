@@ -54,15 +54,16 @@ Aaron
 var Game = Class.extend({
     init: function(theName){
         
-        this.rounds = 25;
-        this.numPlayers = 5;
+        this.rounds = 10;
+        this.numPlayers = 3;
         this.humansPlaying = 0;
         this.numQualities = 3;           //number of qualities used in game (with tarot we have 338 max)
         this.numStartingChips = 25;      //number of starting chips
-        this.autoplay = false;           //whether play happens automatically
+        this.dominionBonus = 1;          //the amount of bonus Dominions get when people use their quality
+        this.autoplay = false;           //whether play happens automatically globally
         
         this.players = [];               //holds players
-        this.watchers = [];              //holds who is watching the next action
+        this.watchers = [];              //holds who is watching the next action {"watcher": "bot1", "target" : bot2" }
         this.qualities = [];            //array of quality objects for game
         this.currentPlayer = 0;              //index in players[] whose turn it is
         this.currentRound = 0;
@@ -77,7 +78,7 @@ var Game = Class.extend({
     createPlayers: function () {        //create players for game
         for (var x=0; x < (this.numPlayers - this.humansPlaying); x++) {        //create bots of random type
             var bot;
-            /* uncomment when there's more than 1 bot
+            /* uncomment when there's more than 1 bot type
             var choice = Math.floor(Math.random()*2+1);         //pick a number between 1 and 2
             if (choice == 1) { bot = new RandomBot("randomBot" + x); }
             else { bot = new SimpleBot("simpleBot" + x); }
@@ -89,7 +90,13 @@ var Game = Class.extend({
         }
 
         for (var x=0; x < this.humansPlaying; x++) {
-            var player = new Player("Jacob", "human", this);        //TODO: this should ask you your name
+            var player;
+            if (this.humansPlaying > 1) { 
+                var tempName = prompt("Please enter your name", "Unique player name");
+                player = new Player(tempName, "human", this);
+            }
+            else { player = new Player("Jacob", "human", this); }
+
             this.players.push(player);
         }
 
@@ -269,6 +276,8 @@ var Game = Class.extend({
         var result;         //this is either "won", "lost", or "tie"
         var chipsNum;
 
+        console.log(theTarget.name + " defended with " + targetResponse.amountUsed + " " + targetResponse.quality);
+
         if (attackerScore > targetScore) {        //if attacker won (winner gets half the other person's chips)
             result = "won";
             chipsNum = Math.ceil(targetResponse.amountUsed / 2);        //take half the chips, rounded up
@@ -288,13 +297,42 @@ var Game = Class.extend({
             chipsNum = 0;
         }        
         
-        this.updateDominion(qualityUsed, 1);        //find person with highest amount of prying quality and give them another chip for that quality
+        console.log(pryerName + " " + result + "!");
+        this.updateDominion(qualityUsed, this.dominionBonus);        //find person with highest amount of prying quality and give them another chip for that quality
 
-        return ({"result" : result, "amount" : chipsNum});      //return to pryer whether it was successful or not, and the quality delta
+        //now we need to calculate the learned facts and send them back!
+        var attackerRange = [];         //fact about the attacker's range
+        var defenderRange = [];         //fact about the defender's range
+
+        if (result == "lost") { 
+            attackerRange = [1, (targetResponse.amountUsed - 1)];      //we know the attacker had a least 1 less than defender, possibly just 1
+            defenderRange = [(amountUsed + 1), -1];                   //we know the defender must have at least 1 more than attacker
+        }
+        if (result == "won") { 
+            attackerRange = [(targetResponse.amountUsed + 1), -1];    //we know the attacker had at least one more than defender
+            defenderRange = [0, (amountUsed - 1)];                    //we know defender had at least one less max than attacker
+        }
+        if (result == "tie") { 
+            attackerRange = [amountUsed, amountUsed];
+            defenderRange = [amountUsed, amountUsed];
+        }
+
+        var attackersFact = new Fact(targetName, targetResponse.quality, defenderRange[0], defenderRange[1]);    //the pryer's learned fact ABOUT the defender
+        var defendersFact = new Fact(pryerName, qualityUsed, attackerRange[0], attackerRange[1]);                //the defender's learned fact ABOUT the pryer
+
+        console.log("updating defender's model of attacker...");
+        theTarget.updatePlayerModel(defendersFact);             //update the defender's model of the attacker
+
+        this.updateWatchers(attackersFact);          //update any watchers
+        this.updateWatchers(defendersFact);          //update any watchers
+
+        return ({"result": result, "fact" : attackersFact});      //return to pryer whether it was successful or not, and the quality delta
     },
 
-    waitWatch: function() {
-        return "you wait watched!";
+    waitWatch: function(watcher, target) {      //add watcher to list to check when actions happen
+
+        this.watchers.push({"watcher": watcher, "target" : target });
+
     },
 
     play: function () {       //start a round of the game
@@ -319,10 +357,49 @@ var Game = Class.extend({
     },
 
     decideWinner: function () {
-        console.log("it's over!");
+        console.log("TIME FOR FINAL GUESSES-------------------------------------");
+
+        var finalScore = [];
+        var guessers = [];
+
+        for (var x=0; x < this.players.length; x++) {       //add guesses to array. We have to do it this way because order is randomized for the game
+            var theSecrets = [];
+            for (var y=0; y < this.players[x].secrets.length; y++) {        //initialize array of points for that player
+                theSecrets.push({"quality" : this.players[x].secrets[y].quality, "points" : 0});
+            }
+
+            finalScore.push({"name" : this.players[x].name, "secrets" : theSecrets});
+            guessers.push({"name" : this.players[x].name, "guesses" : this.players[x].finalGuesses(game)});
+        }
+        
+
+
+        //for the number of guessing players...
+            //for each guess they made...
+                //find the player in finalScore that matches the guess's player it's guessing about
+                    //for each quality in there
+                        //find the same quality in for the real player
+                        //compare it to the guess of the player by absolute value of difference
+                        //if that value is lower than the entry for that player's quality in finalScore...
+                            //update it with that value
+
+        //for each player in finalScore
+            //var playersBestKeptSecret = {"quality": "none", "value" : 0};
+            //for each secret
+                //var secretActualValue = the actual value of the secret
+                //var secretPoints
+                //if finalScore secret value is greater than actual value, secretPoints = secretActualValue
+                //otherwise secretPoints equals the finalScore secret value
+
+                //if the value in playersBestKeptSecret is lower than secretPoints, update it with new value
+        
     },
 
-    updateDominion: function (quality, amount) {
+    updateWatchers: function (theFact) {
+        console.log("whoever was watching " + theFact.player + " would update here.");
+    },
+
+    updateDominion: function (quality, amount) {        //updates the current player with the highest amount in particular quality
 
         var qualIndex;
 
@@ -330,7 +407,7 @@ var Game = Class.extend({
             if (this.players[0].secrets[x].quality == quality) { qualIndex = x; }
         }
 
-        var dominion = this.players.reduce(function(prev, current) {
+        var dominion = this.players.reduce(function(prev, current) {        //TODO: this gives chips to person even if tied...needs to not do that!
             return (prev.secrets[qualIndex].value[0] > current.secrets[qualIndex].value[0]) ? prev : current
         }) //returns object
 
@@ -343,9 +420,19 @@ var Game = Class.extend({
 //-----------------------------------------------------------------------------
 
 var Quality = Class.extend({
-    init: function(theName,weight){
+    init: function(theName,weight) {
         this.name = theName;
         this.weight = weight;        //this is our starter...later on we'll want to deform weights in relation to other qualities, so we'll want to change this data type to an object with a target and weight? (so it's an edge in a directed graph)
+    },
+});
+
+//-----------------------------------------------------------------------------
+
+var Fact = Class.extend({
+    init: function(player, quality, low, high) {
+        this.player = player;
+        this.quality = quality;
+        this.value = [low, high];
     },
 });
 

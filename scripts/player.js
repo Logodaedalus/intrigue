@@ -8,21 +8,19 @@ var Player = Class.extend({                 //the default player (human-controll
 
         if (type !== "model") {     //if it's not a mental model, initialize it
             this.pickPieces(game);
-            //this.populatePlayerModel(game);
         }
     },
     
     populatePlayerModel : function (game) {
-    /*
-    Starting assumptions: other players have some number of chips in qualities that can't be higher than the total number of chips
-    */
+    /* Starting assumptions: other players have some number of chips in qualities that can't be higher than the total number of chips */
 
-        for (var x in game.players) {
+        for (var x=0; x < game.players.length; x++) {
 
             var playerCopy = new Player(game.players[x].name, false, game);         //create a player for their model of the player
+            playerCopy.secrets = [];        //clear secrets
             var secretsInfo = [];
 
-            for (var y in game.qualities) {
+            for (var y=0; y < game.qualities.length; y++) {
                 playerCopy.secrets.push({"quality" : game.qualities[y].name, "value" : [0, game.numStartingChips]});
             }
 
@@ -74,6 +72,18 @@ var Player = Class.extend({                 //the default player (human-controll
         //deal with info from outcome here
     },
 
+    updatePlayerModel: function (player, quality, low, high) {         //this should maybe add stuff to a list of facts?
+        for (var x=0; x < this.players.length; x++) {
+            if (this.players[x].name == player) {
+                for (var y=0; y < this.players[x].secrets.length; y++) {
+                    if (this.players[x].secrets[y][0] < low) { this.players[x].secrets[y][0] = low; }
+                    if (this.players[x].secrets[y][1] > high) { this.players[x].secrets[y][1] = high; }
+                }
+            }
+        }
+    },
+
+
     waitWatch: function (game) {
     //pass your turn, but the next action that's taken will be known to you in its full
 
@@ -116,7 +126,10 @@ var RandomBot = Player.extend({
     pry: function (game)  {
     //Decide who to pry, and then pry them
 
-        var randomIndex = Math.floor(Math.random()*game.players.length+0);          //pick a random target
+        var randomIndex;
+        do {
+            randomIndex = Math.floor(Math.random()*game.players.length+0);          //pick a random target that is not yourself
+        } while (game.players[randomIndex].name == this.name);
         var target = game.players[randomIndex].name;
         
         var nonZeroQualities = [];                  //grab all your qualities you have chips in
@@ -134,17 +147,18 @@ var RandomBot = Player.extend({
         var amountUsed = Math.floor(Math.random()*this.secrets[nonZeroQualities[randomIndex]].value[0]+1);     //pick a random amount
 
         $('#' + this.name + 'Action ul').append("<li>Round "+ game.currentRound + ": " + this.name + " pried " + target + " with " + amountUsed + " " + qualityUsed + "!</li>");
-        console.log(this.name + " pried " + target + " with " + amountUsed + " " + qualityUsed + "!");
-
-        console.log(this.name + "'s " + qualityUsed + " = " + this.secrets[nonZeroQualities[randomIndex]].value[0]);
-        var outcome = game.pryTurn(this.name, target, qualityUsed, amountUsed);            //take action
-        console.log("it was a " + outcome.result + "! " + this.name + "'s " + qualityUsed + " now = " + this.secrets[nonZeroQualities[randomIndex]].value[0]);
         
-        //deal with info from outcome here
+        console.log(this.name + " pried " + target + " with " + amountUsed + "/" + this.secrets[nonZeroQualities[randomIndex]].value[0] + " " + qualityUsed + "!");
+
+        var outcome = game.pryTurn(this.name, target, qualityUsed, amountUsed);            //take action
+
+        console.log(this.name + "'s " + qualityUsed + " now = " + this.secrets[nonZeroQualities[randomIndex]].value[0]);
+        
+        console.log("updating attacker's model of defender...");
+        this.updatePlayerModel(outcome.fact);        //update our model of the player
     },
 
-    parry: function (game, attacker, quality, amount) {
-    //defend against a pry action. Decide what you will defend with and defend
+    parry: function (game, attacker, quality, amount) {    //defend against a pry action. Decide what you will defend with and defend
 
         var nonZeroQualities = [];                  //grab all your qualities you have chips in
         for (var x in this.secrets) {
@@ -178,12 +192,62 @@ var RandomBot = Player.extend({
     waitWatch: function (game) {
     //pass your turn, but the next action that's taken will be known to you in its full
 
+        var randomIndex = Math.floor(Math.random()*game.players.length+0);
+        var target = game.players[randomIndex].name;
+
         $('#' + this.name + 'Action ul').append("<li>Round "+ game.currentRound + ": " + this.name + " bided their time.");
         console.log(this.name + " bided their time.");
 
-        var outcome = game.waitWatch();
+        game.waitWatch(this.name, target);
 
         //deal with info from outcome here
+    },
+
+    updatePlayerModel: function (theFact) {         //this function updates a player's model with new info
+
+        //if either of the values are -1, that means don't update it. Otherwise, if it increases precision update it!
+        var low = theFact.value[0];
+        var high = theFact.value[1];
+
+        for (var x=0; x < this.players.length; x++) {       //find the player
+            if (this.players[x].name == theFact.player) {
+                for (var y=0; y < this.players[x].secrets.length; y++) {
+                    if (this.players[x].secrets[y].quality == theFact.quality) {       //when we find the matching quality in their model...
+
+                        console.log(this.name + "'s model of " + this.players[x].name + "'s " + this.players[x].secrets[y].quality + " was somewhere between " + this.players[x].secrets[y].value[0] + " and " + this.players[x].secrets[y].value[1]);
+                        if (this.players[x].secrets[y].value[0] < low && low !== -1) { this.players[x].secrets[y].value[0] = low; }     //if it's higher precision, update!
+                        if (this.players[x].secrets[y].value[1] > high && high !== -1) { this.players[x].secrets[y].value[1] = high; }  //if it's higher precision, update!
+                        console.log("-----it is now somewhere between " + this.players[x].secrets[y].value[0] + " and " + this.players[x].secrets[y].value[1]);
+                    }
+                }
+            }
+        }
+        
+    },
+
+    finalGuesses: function (game) {         //return an array object with the guesses for each quality
+        //for randomBot it's just going to pick a random number somewhere in the range it knows
+
+        var finalGuesses = [];
+        var tempConsole = "";
+
+        for (var x=0; x < this.players.length; x++) {
+            if (this.players[x].name !== this.name) {       //don't guess about yourself!
+                var playerGuesses = [];
+                for (var y=0; y < this.players[x].secrets.length; y++) {        //for each of the players' secrets...
+                    var theSecret = this.players[x].secrets[y]
+                    playerGuesses.push({
+                        "trait" : this.players[x].secrets[y].quality,
+                        "guess" : Math.floor(Math.random() * theSecret.value[1] + theSecret.value[0])       //pick a random number in range of what you know
+                    });
+                }
+                tempConsole += " ";
+                tempConsole += this.players[x].name;
+                finalGuesses.push({"name" : this.players[x].name, "guesses" : playerGuesses});
+            }
+        }
+        console.log(tempConsole);
+        return finalGuesses;
     },
 
     makeMove: function(game){

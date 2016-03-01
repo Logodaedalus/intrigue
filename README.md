@@ -11,7 +11,7 @@ To start, just open intrigue.html in your browser
  * Barter Info
  * Wait and Watch
 
-**Pry** - a player uses some number of chips in some category to inquire about another players category. That player must put some number of chips from that category in as well, if they have them. Whoever has more chips wins. The winner adds half the other players' chips to their category. The other half are returned to them. Whoever has the most currently in the prying quality gets a chip. Whoever has the most currently in the winning quality gets a chip (if pryer wins, 2 chips go to that person in addition to the pryer's reward)
+**Pry** - a player uses some number of chips in some category to inquire about another players category. That player must put some number of chips from that category in as well, if they have them. Whoever has more chips wins. The winner adds half the other players' chips to their category. The other half are returned to them. Whoever has the most currently in the winning quality gets a chip (if pryer wins, a chip goes to that person in addition to the pryer's reward).
 
 **Barter** - a player can submit info to another player in the hope of getting info back. Info is the form of "player 2 has between 4 and 6 chips in this quality". The higher the precision, the better the trade. A series of bad trades will bias the player to not want to trade with you.
 
