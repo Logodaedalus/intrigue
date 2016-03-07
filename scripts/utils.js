@@ -81,3 +81,15 @@ function shuffle(array) {
 
   return array;
 }
+
+//------------------------------------------------------------------------------
+var consoleLogArray = [];           //array of arrays, holds messages for console
+var consoleLogLevel = 1;            //this is actually set in game.js at the top
+
+function consoleLog(level, message) {         //1 is basic checks, 2 is more verbose, 3 is totally verbose
+
+  consoleLogArray.push([level, message]);          //add it to console array
+  if (level <= consoleLogLevel) {        //if current setting is good, consoleLog it
+      console.log(message);
+  }
+}

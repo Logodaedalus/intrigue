@@ -54,20 +54,21 @@ Aaron
 var Game = Class.extend({
     init: function(theName){
         
-        this.rounds = 10;
-        this.numPlayers = 3;
+        this.rounds = 35;
+        this.numPlayers = 4;
         this.humansPlaying = 0;
-        this.numQualities = 3;           //number of qualities used in game (with tarot we have 338 max)
+        this.numQualities = 4;           //number of qualities used in game (with tarot we have 338 max)
         this.numStartingChips = 25;      //number of starting chips
         this.dominionBonus = 1;          //the amount of bonus Dominions get when people use their quality
         this.autoplay = false;           //whether play happens automatically globally
-        
+        consoleLogLevel = 3;             //3 = verbose console, 2 = turn info, 1 = most basic
+
         this.players = [];               //holds players
         this.watchers = [];              //holds who is watching the next action {"watcher": "bot1", "target" : bot2" }
         this.qualities = [];            //array of quality objects for game
         this.currentPlayer = 0;              //index in players[] whose turn it is
-        this.currentRound = 0;
-        this.uiUpdate = [];
+        this.currentRound = 0;          //current round
+        
 
         this.initQualities();
         this.createPlayers();
@@ -145,7 +146,7 @@ var Game = Class.extend({
 
         $("#players").tabs();
 
-        console.log("initialized display!");
+        consoleLog(3, "initialized display!");
     },
 
     createHumanUI: function (playerIndex) {   //creates the interface for human players
@@ -251,7 +252,7 @@ var Game = Class.extend({
     },
 
     updateUI: function ()  {   //update the UI with values
-        console.log("updated display!");
+        consoleLog(3, "updated display!");
     },
 
     barterTurn: function() {
@@ -276,20 +277,34 @@ var Game = Class.extend({
         var result;         //this is either "won", "lost", or "tie"
         var chipsNum;
 
-        console.log(theTarget.name + " defended with " + targetResponse.amountUsed + " " + targetResponse.quality);
-
         if (attackerScore > targetScore) {        //if attacker won (winner gets half the other person's chips)
             result = "won";
             chipsNum = Math.ceil(targetResponse.amountUsed / 2);        //take half the chips, rounded up
-            $.grep(theAttacker.secrets, function (h) { if (h.quality == targetResponse.quality) { h.value[0]+=chipsNum; h.value[1]+=chipsNum; } });
-            $.grep(theTarget.secrets, function (h) { if (h.quality == targetResponse.quality) { h.value[0]-=chipsNum; h.value[1]-=chipsNum; } });
+            $.grep(theAttacker.secrets, function (h) { if (h.quality == targetResponse.quality) { 
+                var oldVal = h.value[0];
+                h.value[0]+=chipsNum; h.value[1]+=chipsNum; 
+                consoleLog(3, "Attacker's value of " + targetResponse.quality + " went from " + oldVal + " to " + h.value[0]);
+            } });
+            $.grep(theTarget.secrets, function (h) { if (h.quality == targetResponse.quality) { 
+                var oldVal = h.value[0];
+                h.value[0]-=chipsNum; h.value[1]-=chipsNum; 
+                consoleLog(3, "Defenders's value of " + targetResponse.quality + " went from " + oldVal + " to " + h.value[0]);
+            } });
         }
 
         else if (attackerScore < targetScore) {        //if defender won (winner gets half the other person's chips)
             result = "lost";
             chipsNum = Math.ceil(amountUsed / 2);        //take half the chips, rounded up
-            $.grep(theAttacker.secrets, function (h) { if (h.quality == qualityUsed) { h.value[0]-=chipsNum; h.value[1]-=chipsNum; } });
-            $.grep(theTarget.secrets, function (h) { if (h.quality == qualityUsed) { h.value[0]+=chipsNum; h.value[1]+=chipsNum; } });
+            $.grep(theAttacker.secrets, function (h) { if (h.quality == qualityUsed) { 
+                var oldVal = h.value[0];
+                h.value[0]-=chipsNum; h.value[1]-=chipsNum; 
+                consoleLog(3, "Attacker's value of " + qualityUsed + " went from " + oldVal + " to " + h.value[0]);
+            } });
+            $.grep(theTarget.secrets, function (h) { if (h.quality == qualityUsed) { 
+                var oldVal = h.value[0];
+                h.value[0]+=chipsNum; h.value[1]+=chipsNum; 
+                consoleLog(3, "Defender's value of " + qualityUsed + " went from " + oldVal + " to " + h.value[0]);
+            } });
         }
 
         else {      //if there was a tie, no chips trade hands
@@ -297,7 +312,8 @@ var Game = Class.extend({
             chipsNum = 0;
         }        
         
-        console.log(pryerName + " " + result + "!");
+        consoleLog(2, pryerName + " " + result + "!");
+
         this.updateDominion(qualityUsed, this.dominionBonus);        //find person with highest amount of prying quality and give them another chip for that quality
 
         //now we need to calculate the learned facts and send them back!
@@ -320,7 +336,7 @@ var Game = Class.extend({
         var attackersFact = new Fact(targetName, targetResponse.quality, defenderRange[0], defenderRange[1]);    //the pryer's learned fact ABOUT the defender
         var defendersFact = new Fact(pryerName, qualityUsed, attackerRange[0], attackerRange[1]);                //the defender's learned fact ABOUT the pryer
 
-        console.log("updating defender's model of attacker...");
+        consoleLog(3, "updating defender's model of attacker...");
         theTarget.updatePlayerModel(defendersFact);             //update the defender's model of the attacker
 
         this.updateWatchers(attackersFact);          //update any watchers
@@ -351,52 +367,77 @@ var Game = Class.extend({
         }
 
         else if (this.autoplay || this.players[this.currentPlayer].autoplay) {      //otherwise, if autoplay for game is on or autoplay for player is on
+            consoleLog(3, "------------------------------");
+            consoleLog(3, this.players[this.currentPlayer].name + "'s Turn");
+            consoleLog(3, "------------------------------");
             this.players[this.currentPlayer].takeTurn(this);                        //take turn
             this.play();                                                            //call play again
         }
     },
 
     decideWinner: function () {
-        console.log("TIME FOR FINAL GUESSES-------------------------------------");
+        consoleLog(2, "-----------------------------------------------------------");
+        consoleLog(2, "**************TIME FOR FINAL GUESSES**************");
+        consoleLog(2, "-----------------------------------------------------------");
 
-        var finalScore = [];
-        var guessers = [];
 
-        for (var x=0; x < this.players.length; x++) {       //add guesses to array. We have to do it this way because order is randomized for the game
-            var theSecrets = [];
-            for (var y=0; y < this.players[x].secrets.length; y++) {        //initialize array of points for that player
-                theSecrets.push({"quality" : this.players[x].secrets[y].quality, "points" : 0});
+        for (var x=0; x < this.players.length; x++) {       //for every player...
+            var tempPlayer = this.players[x];
+            consoleLog(3, "guessing about " + tempPlayer.name);
+
+            for (var y=0; y < tempPlayer.secrets.length; y++) {     //for every secret...
+                consoleLog(3, "specifically, their " + tempPlayer.secrets[y].quality + " (which is " + this.players[x].secrets[y].value[0] + ")");
+                var tempSecret = tempPlayer.secrets[y];
+                var guess = this.getClosestGuess(tempPlayer, tempSecret.quality);        //populate each player's secrets with best guess and final amount
+                var finalValue = Math.abs(guess.guess - tempSecret.value[0]);
+                if (finalValue > tempSecret.value[0]) { finalValue = tempSecret.value[0];}      //final value can't be more than total chips in quality
+
+                this.players[x].secrets[y].finalValue = finalValue;
+                this.players[x].secrets[y].bestGuesser = guess.guesser.name;
+                this.players[x].secrets[y].bestGuess = guess.guess;
+
+                consoleLog(3, "---the best guess about " + tempPlayer.name + "'s " + tempPlayer.secrets[y].quality + " is " + guess.guesser.name + "'s guess of " + guess.guess);
             }
-
-            finalScore.push({"name" : this.players[x].name, "secrets" : theSecrets});
-            guessers.push({"name" : this.players[x].name, "guesses" : this.players[x].finalGuesses(game)});
         }
-        
 
+        var winner = {"player": "none", "qualityName": "none", "value": 0};
+        for (var x=0; x < this.players[0].secrets.length; x++) {     //this assumes each person's qualities are in the same order but that's ok right?
+            var best = this.players.reduce(function (prev, curr) {
+                return (curr.secrets[x].finalValue > prev.secrets[x].finalValue ? curr : prev);
+            });
+            if (best.secrets[x].finalValue > winner.value) {
+                winner.player = best.name;
+                winner.qualityName = this.players[0].secrets[x].quality;
+                winner.value = best.secrets[x].finalValue;
+            }
+        }
 
-        //for the number of guessing players...
-            //for each guess they made...
-                //find the player in finalScore that matches the guess's player it's guessing about
-                    //for each quality in there
-                        //find the same quality in for the real player
-                        //compare it to the guess of the player by absolute value of difference
-                        //if that value is lower than the entry for that player's quality in finalScore...
-                            //update it with that value
+        consoleLog(1, "The winner is " + winner.player + ", with a " + winner.qualityName + " score of " + winner.value + "!");
 
-        //for each player in finalScore
-            //var playersBestKeptSecret = {"quality": "none", "value" : 0};
-            //for each secret
-                //var secretActualValue = the actual value of the secret
-                //var secretPoints
-                //if finalScore secret value is greater than actual value, secretPoints = secretActualValue
-                //otherwise secretPoints equals the finalScore secret value
-
-                //if the value in playersBestKeptSecret is lower than secretPoints, update it with new value
         
     },
 
+    getClosestGuess: function (player, quality) {       //gets the closest guess of all the players about a player's specific quality
+    
+        var guesses = [];
+        var qualityAmount = $.grep(player.secrets, function (h) { return h.quality == quality })[0].value[0];
+        
+        for (var x=0; x < this.players.length; x++) {
+            if (this.players[x].name !== player.name) {          //don't guess about yourself
+                consoleLog(3, this.players[x].name + " is guessing.");
+                guesses.push({"guesser" : this.players[x], "guess": this.players[x].finalGuess(player, quality)});      //add all players' guesses
+            }
+        }
+        
+        var closest = guesses.reduce(function (prev, curr) {        //get closest guess from array of guesses
+          return (Math.abs(curr.guess - qualityAmount) < Math.abs(prev.guess - qualityAmount) ? curr : prev);
+        });
+
+        return closest;
+    },
+
     updateWatchers: function (theFact) {
-        console.log("whoever was watching " + theFact.player + " would update here.");
+        consoleLog(2, "whoever was watching " + theFact.player + " would update here.");
     },
 
     updateDominion: function (quality, amount) {        //updates the current player with the highest amount in particular quality
@@ -413,8 +454,9 @@ var Game = Class.extend({
 
         dominion.secrets[qualIndex].value[0] += amount;
         dominion.secrets[qualIndex].value[1] += amount;
-        console.log("the Dominion of " + quality + " (" + dominion.name + ") has gained " + amount);
+        consoleLog(2, "the Dominion of " + quality + " (" + dominion.name + ") has gained " + amount + ", and is now " + dominion.secrets[qualIndex].value[0]);
     }
+
 });
 
 //-----------------------------------------------------------------------------
