@@ -89,7 +89,44 @@ var consoleLogLevel = 1;            //this is actually set in game.js at the top
 function consoleLog(level, message) {         //1 is basic checks, 2 is more verbose, 3 is totally verbose
 
   consoleLogArray.push([level, message]);          //add it to console array
-  if (level <= consoleLogLevel) {        //if current setting is good, consoleLog it
+  
+  $("#console").append("<p class='consoleLine level"+ level +"'>"+ message +"<p>");
+
+  /* if (level <= consoleLogLevel) {        //if current setting is good, consoleLog it
       console.log(message);
+  } */
+}
+
+function changeConsoleLevel(level) {
+
+  $(".consoleLine").hide();
+  $(".consoleLine.level" + level).show();
+  if (level == "3") {
+    $(".consoleLine.level2").show();
+    $(".consoleLine.level1").show();
   }
+}
+
+function getRandom(min, max) {     //return a random number within the range
+  return Math.floor(Math.random() * (max - min + 1)) + min;  
+}
+
+function getWeightedRandomItem(list, weight) {      //list and weight are arrays of equal length
+    var total_weight = weight.reduce(function (prev, cur, i, arr) {
+        return prev + cur;
+    });
+     
+    var random_num = getRandom(0, total_weight);
+    var weight_sum = 0;
+     
+    for (var i = 0; i < list.length; i++) {
+        weight_sum += weight[i];
+        weight_sum = +weight_sum.toFixed(2);
+         
+        if (random_num <= weight_sum) {
+            return list[i];
+        }
+    }
+     
+    // end of function
 }

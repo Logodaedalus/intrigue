@@ -1,3 +1,8 @@
+body {
+	font-family: Verdana,Arial,sans-serif;
+	font-size:13px;
+}
+
 .playerAction li {
 	margin-bottom:12px;
 	font-size:15px;
@@ -29,4 +34,65 @@
     font-size: 10px;
     transform: rotate(-90deg);
     text-align:right;
+}
+
+#gear { 
+	width:40px; 
+	position:relative;
+	z-index:2;
+}
+
+#gameSettings { 
+	display:none; 
+    width: 250px;
+    background-color: #eee;
+    padding: 20px;
+    padding-top:40px;
+    position: absolute;
+    z-index: 1;
+    top: 0px;
+    left: 0px;
+    border-radius: 20px;
+}
+
+#gameSettings input {
+	width:40px;
+}
+
+#gameSettings #changeButton {
+	width: 160px;
+}
+
+#consoleToggle {
+	    position: absolute;
+    top: 57px;
+    right: 19px;
+    width: 77px;
+    background-color: black;
+    height: 24px;
+    text-align: center;
+    padding-top: 5px;
+    border-radius: 8px;
+    color: white;
+    z-index: 1;
+}
+
+#console {
+	display:none;
+    position: absolute;
+    right: 0px;
+    top: 48px;
+    height: 500px;
+    overflow: auto;
+    padding: 20px;
+    font-size: 12px;
+    background-color: rgba(113, 109, 109, 0.388235);
+}
+
+#console h2 {
+	background-color: black;
+    padding: 5px;
+    text-align: center;
+    border: 2px solid wheat;
+    color: yellow;
 }

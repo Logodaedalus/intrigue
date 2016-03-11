@@ -29,16 +29,14 @@ var Player = Class.extend({                 //the default player (human-controll
     },
     pickPieces : function (game) {          //for now, this just assigns random pieces
         var pieces = game.numStartingChips;
-        for (var x=0; x < game.numQualities - 1; x++) {
-            var value = Math.floor(Math.random()*pieces+0);
+        for (var x=0; x < game.numQualities - 1; x++) {             //for every category except last, pick random value
+            var value = getRandom(0,pieces);
             var secret = {"quality": game.qualities[x].name,"value":[value,value]};
             this.secrets.push(secret);
             if (pieces > 0) { pieces -= value;}
         }
-        if (pieces > 0) {
-            var lastSecret = {"quality": game.qualities[game.numQualities-1].name, "value" : [pieces,pieces]}
-            this.secrets.push(lastSecret);
-        }
+        var lastSecret = {"quality": game.qualities[game.numQualities-1].name, "value" : [pieces,pieces]}   //put all remaining chips in last category
+        this.secrets.push(lastSecret);
     },
     takeTurn : function (game) {        //all players need to have this function
         
@@ -96,6 +94,17 @@ var Player = Class.extend({                 //the default player (human-controll
 
     getGuess: function (player, quality) {      //returns the player's guess about the other player's quality
 
+    },
+
+    getNumChips: function() {
+        var numChips = 0;
+
+        for (var x=0; x < this.secrets.length; x++) {
+            numChips += this.secrets[x].value[0];
+        }
+
+        if (numChips == 0) { consoleLog(3, this.name + " has no chips left!")}
+        return numChips;
     }
 });
  
@@ -109,16 +118,15 @@ var RandomBot = Player.extend({
 
     pickPieces : function (game) {              //this just picks random amounts for each category
         var pieces = game.numStartingChips;
-        for (var x=0; x < game.numQualities - 1; x++) {
-            var value = Math.floor(Math.random()*pieces+0);
+        for (var x=0; x < game.numQualities - 1; x++) {         //pick random vals for all but last category
+            var value = getRandom(0,pieces);
             var secret = {"quality": game.qualities[x].name,"value":[value,value]};
             this.secrets.push(secret);
             if (pieces > 0) { pieces -= value;}
         }
-        if (pieces > 0) {
-            var lastSecret = {"quality": game.qualities[game.numQualities-1].name, "value" : [pieces,pieces]}
-            this.secrets.push(lastSecret);
-        }
+        
+        var lastSecret = {"quality": game.qualities[game.numQualities-1].name, "value" : [pieces,pieces]}       //put all remaining chips in last quality
+        this.secrets.push(lastSecret);
     },
 
     takeTurn : function (game) {        //all bots need to have this function
@@ -131,7 +139,7 @@ var RandomBot = Player.extend({
     //Decide who to pry, and then pry them
         var randomIndex;
         do {
-            randomIndex = Math.floor(Math.random()*game.players.length+0);          //pick a random target that is not yourself
+            randomIndex = getRandom(0, game.players.length - 1);                    //pick a random target that is not yourself
         } while (game.players[randomIndex].name == this.name);
         var target = game.players[randomIndex].name;
         
@@ -144,10 +152,10 @@ var RandomBot = Player.extend({
             this.waitWatch(game);
         }
 
-        randomIndex = Math.floor(Math.random()*nonZeroQualities.length+0);          //pick a random quality to use
+        randomIndex = getRandom(0, nonZeroQualities.length-1);            //pick a random quality to use
         var qualityUsed = this.secrets[nonZeroQualities[randomIndex]].quality;
 
-        var amountUsed = Math.floor(Math.random()*this.secrets[nonZeroQualities[randomIndex]].value[0]+1);     //pick a random amount
+        var amountUsed = getRandom(1, this.secrets[nonZeroQualities[randomIndex]].value[0]);        //pick a random amount
 
         $('#' + this.name + 'Action ul').append("<li>Round "+ game.currentRound + ": " + this.name + " pried " + target + " with " + amountUsed + " " + qualityUsed + "!</li>");
         
@@ -168,16 +176,16 @@ var RandomBot = Player.extend({
             if (this.secrets[x].value[0] > 0) { nonZeroQualities.push(x); }
         }
 
-        randomIndex = Math.floor(Math.random()*nonZeroQualities.length+0);          //pick a random quality to use
+        randomIndex = getRandom(0, nonZeroQualities.length - 1);             //pick a random quality to use
         var qualityUsed;
         var amountUsed;
         if (nonZeroQualities.length > 0) {      //if they still have chips left...
             qualityUsed = this.secrets[nonZeroQualities[randomIndex]].quality;
-            amountUsed = Math.floor(Math.random()*this.secrets[nonZeroQualities[randomIndex]].value[0]+1);     //pick a random amount
+            amountUsed = getRandom(1,this.secrets[nonZeroQualities[randomIndex]].value[0]);         //pick a random amount
             consoleLog(3, this.name + " defended with " + amountUsed + "/" + this.secrets[nonZeroQualities[randomIndex]].value[0] + " " + qualityUsed);
         }
         else {
-            qualityUsed = this.secrets[Math.floor(Math.random()*this.secrets.length+0)].quality;
+            qualityUsed = this.secrets[getRandom(0,this.secrets.length-1)].quality;
             amountUsed = 0;
             consoleLog(3, this.name + " had nothing to defend with! So they used zero of " + qualityUsed);
         }
@@ -189,7 +197,7 @@ var RandomBot = Player.extend({
     barterInfo: function (game) {
     //barter info with another player. You give info, in return for info. If your info is more exact, you earn trust
 
-        var randomIndex = Math.floor(Math.random()*game.players.length+0);
+        var randomIndex = getRandom(0, game.players.length-1);
         var target = game.players[randomIndex].name;
 
         var infoGiven;
@@ -205,7 +213,7 @@ var RandomBot = Player.extend({
     waitWatch: function (game) {
     //pass your turn, but the next action that's taken will be known to you in its full
 
-        var randomIndex = Math.floor(Math.random()*game.players.length+0);
+        var randomIndex = getRandom(0, game.players.length-1);
         var target = game.players[randomIndex].name;
 
         $('#' + this.name + 'Action ul').append("<li>Round "+ game.currentRound + ": " + this.name + " bided their time.");
@@ -255,19 +263,19 @@ var RandomBot = Player.extend({
 
         var playerModel = $.grep(this.players, function (h) { return h.name == player.name })[0];
         var qualityRange = $.grep(playerModel.secrets, function (h) { return h.quality == quality })[0].value;
-        var guess = Math.floor(Math.random() * qualityRange[1] + qualityRange[0])       //pick a random number in range of what you know
+        var guess = getRandom(qualityRange[0], qualityRange[1]);        //pick a random number in range of what you know
+        
         consoleLog(3, "------" + this.name + " guesses some number between " + qualityRange[0] + " and " + qualityRange[1] + ": " + guess);
         return guess;
     },
 
-    makeMove: function(game){
-        //this is where strategy should happen, but randomBot just chooses randomly
+    makeMove: function(game){        //this is where strategy should happen, but randomBot just chooses randomly
         var actionChoice;
         if (this.getNumChips() > 0) {
-            var actionChoice = Math.floor(Math.random()*3+1);         //pick a number between 1 and 3    
+            var actionChoice = getRandom(1,3)                       //pick a number between 1 and 3    
         }
         else {
-            var actionChoice = Math.floor(Math.random()*3+2);         //pick a number between 1 and 3
+            var actionChoice = getRandom(2,3)           ;         //pick a number between 1 and 3
         }
         
 
@@ -281,59 +289,252 @@ var RandomBot = Player.extend({
             case 3: 
                 this.waitWatch(game);
         }
-    },
-
-    getNumChips: function() {
-        var numChips = 0;
-
-        for (var x=0; x < this.secrets.length; x++) {
-            numChips += this.secrets[x].value[0];
-        }
-
-        if (numChips == 0) { consoleLog(3, this.name + " has no chips left!")}
-        return numChips;
     }
 });
 
 //-----------------------------------------------------------------------------
 /*
-var SimpleBot = Player.extend({
-    init: function(name){
-        this._super(name, true);
-        this.playerModels = [];     //current models of what you think other players have
+var fsicrBot = RandomBot.extend({
+    init: function(theName, type, game){
+        this._super(theName, "bot", game);       
+        this.autoplay = true; 
     },
 
-    pick
-    takeTurn : function (game) {        //all bots need to have this function
-
-        for (var x=0; x < game.numPlayers.length -1; x++) {     //evaluate players and update their info
-            this.evaluatePlayer();
-        }
+    takeTurn : function (game) {                //evaluate stuff and then choose a move
         this.makeMove();
 
     },
-    evaluatePlayer : function () {
-        //do some evaluation stuff
-        this.updatePlayerInfo();
-    },
 
-    updatePlayerInfo : function() {
+    pickpieces : function() {                   //pick pieces at beginning of game
 
     },
 
-    makeMove : function() {
-        var choice = Math.floor(Math.random()*3+1);         //pick a number between 1 and 3
+    waitWatch : function() {                    //wait and watch a player
 
-            switch (choice) {
-                case 1:
-                    this.pry("something","something",5);
-                    break;
-                case 2:
-                    this.barterInfo("something","something");
-                    break;
-                case 3:
-                    this.waitWatch();
-            }
+    },
+
+    barterInfo : function() {                   //trade info with other players
+
+    },
+
+    pry : function() {                          //use chips to discover info about other players
+
+    },
+
+    parry : function() {                        //response to a pry function
+
+    },
+
+    updatePlayerModel : function() {            //update info about other players
+
+    },
+
+    finalGuess : function () {                  //make final guess about other bots
+
+    },
+
+    makeMove : function() {         //choose a move function to trigger and do that
+
     }
+
+    
+});
+
+//-----------------------------------------------------------------------------
+/*
+Implemented "regret matching and minimization" from Neller / Lanctot's "An Introduction to Counterfactual Regret Minimization" (http://modelai.gettysburg.edu/2013/cfr/cfr.pdf)
+*/
+var regretMatchingBot = RandomBot.extend({
+    init: function(theName, type, game){
+        this._super(theName, "bot", game);       
+        this.autoplay = true; 
+
+        this.pryVal = 0;            //list of actions the bot can take
+        this.barterVal = 1;
+        this.waitwatchVal = 2;
+
+        this.otherAction;
+        this.myAction;
+        this.numActions = 3;                         //rounds??? Might actually be the number of actions to strategize about
+        this.regretSum = [];                     //this is an array of numbers (doubles) the length of numActions
+        this.strategy = [];                      //this is an array of numbers (doubles) the length of numActions
+        this.strategySum = [];                   //this is an array of numbers (doubles) the length of numActions
+        this.oppStrategy = [0.5, 0.3, 0.2 ];         //the initial weights for opponent choices
+    },
+    /*takeTurn : function (game) {                //evaluate stuff and then choose a move
+        this.makeMove();
+
+    },
+
+    pickpieces : function() {                   //pick pieces at beginning of game
+
+    },
+
+    waitWatch : function() {                    //wait and watch a player
+
+    },
+
+    barterInfo : function() {                   //trade info with other players
+
+    },
+
+    pry : function() {                          //use chips to discover info about other players
+
+    },
+
+    parry : function() {                        //response to a pry function
+
+    },
+
+    updatePlayerModel : function() {            //update info about other players
+
+    },
+
+    finalGuess : function () {                  //make final guess about other bots
+
+    },
+*/
+    getStrategy : function() {          //Get current mixed strategy through regret-matching
+    //Regret-matching selects actions in proportion to positive regrets of not having chosen them in the past.
+        var normalizingSum = 0;
+        for (var a = 0; a < this.numActions; a++) {     //we begin by first copying all positive regrets and summing them
+            this.strategy[a] = this.regretSum[a] > 0 ? this.regretSum[a] : 0;
+            normalizingSum += this.strategy[a];
+        }
+        for (var a = 0; a < this.numActions; a++) {     //We then make a second pass through the strategy entries
+            if (normalizingSum > 0) {                   //If there is at least one action with positive regret...
+                this.strategy[a] /= normalizingSum;         //we normalize the regrets by dividing by our normalizing sum of positive regrets
+            }
+            else {      //Note that the normalizing sum could be non-positive. In such cases, we make the strategy uniform, giving each action an equal probability (1.0 / NUM ACTIONS)
+                this.strategy[a] = 1.0 / this.numActions;
+            }
+
+            //To normalize in this context means that we ensures that array entries sum to 1 and thus represent probabilities of the corresponding actions in the computed mixed strategy.
+
+            this.strategySum[a] += this.strategy[a];
+        }
+        return this.strategy;            //this is a double[]
+    },
+
+    getAction : function(strategy) {            //Get random action according to mixed-strategy distribution
+        var r = Math.random();
+        var a = 0;
+        var cumulativeProbability = 0;
+        while (a < this.numActions - 1) {
+            cumulativeProbability += strategy[a];
+            if (r < cumulativeProbability)
+                break;
+            a++;
+        }
+        return a;       //this is an int
+    },
+
+    train : function(iterations) {                          //Train
+        var actionUtility = [];                             //an array of doubles of length numActions
+        for (var i = 0; i < iterations; i++) {
+            this.getRegretMixedStratAct();                       //Get regret-matched mixed-strategy actions
+            this.computeActionUtil(actionUtility);               //Compute action utilities
+            this.accumulateActionRegrets(actionUtility);             //Accumulate action regrets
+        }
+    },
+
+    getRegretMixedStratAct : function() {           //Get regret-matched mixed-strategy actions
+        var strategy = this.getStrategy();               //an array of doubles
+        var myAction = this.getAction(strategy);         //an int
+        var otherAction = this.getAction(this.oppStrategy);   //an int
+    },
+
+    computeActionUtil : function(actionUtility) {               //Compute action utilities
+        //TODO: this section needs actual utilities...right now totally broken!
+        actionUtility[this.otherAction] = 0;
+        actionUtility[this.otherAction == this.numActions - 1 ? 0 : this.otherAction + 1] = 1;
+        actionUtility[this.otherAction == 0 ? this.numActions - 1 : this.otherAction - 1] = -1;
+    },
+
+    accumulateActionRegrets : function(actionUtility) {         //Accumulate action regrets
+        for (var a = 0; a < this.numActions; a++) {
+            this.regretSum[a] += actionUtility[a] - actionUtility[this.myAction];
+        }
+    },
+
+    getAverageStrategy : function() {                  //Get average mixed strategy across all training iterations
+        var avgStrategy = [];                         //array of doubles, of length numActions
+        var normalizingSum = 0;
+        for (var a = 0; a < this.numActions; a++)
+            normalizingSum += this.strategySum[a];
+        for (var a = 0; a < this.numActions; a++)
+            if (normalizingSum > 0)
+                avgStrategy[a] = this.strategySum[a] / normalizingSum;
+            else
+                avgStrategy[a] = 1.0 / this.numActions;
+        return avgStrategy;         //this is a double[]
+    },
+
+    initComputation : function(args) {         //takes an array of strings as arg
+        this.train(1000);                     //could be one million?
+        console.log("the strategy is: " + this.getAverageStrategy());
+        return this.getAverageStrategy();
+
+    },
+
+    makeMove : function(game) {         //choose a move function to trigger and do that
+        this.getStrategy();
+        this.getAction(this.strategy); 
+        this.train();
+        this.getAverageStrategy();        //Get average mixed strategy across all training iterations
+        var thisTurnStrat = this.initComputation();
+
+        var actions = [this.pry(game),this.barterInfo(game), this.waitWatch(game)];
+
+        getWeightedRandomItem(actions, thisTurnStrat);
+    }
+    
+});
+
+//-----------------------------------------------------------------------------
+/*
+var TemplateBot = Player.extend({
+    init: function(name){
+        this._super(name, true);
+        this.autoplay = true;
+    },
+    takeTurn : function (game) {                //evaluate stuff and then choose a move
+        this.makeMove();
+
+    },
+
+    pickpieces : function() {                   //pick pieces at beginning of game
+
+    },
+
+    waitWatch : function() {                    //wait and watch a player
+
+    },
+
+    barterInfo : function() {                   //trade info with other players
+
+    },
+
+    pry : function() {                          //use chips to discover info about other players
+
+    },
+
+    parry : function() {                        //response to a pry function
+
+    },
+
+    updatePlayerModel : function() {            //update info about other players
+
+    },
+
+    finalGuess : function () {                  //make final guess about other bots
+
+    },
+
+    makeMove : function() {         //choose a move function to trigger and do that
+
+    }
+
+    
 });
 */

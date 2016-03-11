@@ -52,16 +52,29 @@ Aaron
 //------------------------------------------------------------------------------
 
 var Game = Class.extend({
-    init: function(theName){
+    init: function(propArray){
         
-        this.rounds = 35;
-        this.numPlayers = 4;
-        this.humansPlaying = 0;
-        this.numQualities = 4;           //number of qualities used in game (with tarot we have 338 max)
-        this.numStartingChips = 25;      //number of starting chips
-        this.dominionBonus = 1;          //the amount of bonus Dominions get when people use their quality
-        this.autoplay = false;           //whether play happens automatically globally
-        consoleLogLevel = 3;             //3 = verbose console, 2 = turn info, 1 = most basic
+        if (!propArray) {
+            this.rounds = 5;
+            this.numPlayers = 3;
+            this.humansPlaying = 0;
+            this.numQualities = 4;           //number of qualities used in game (with tarot we have 338 max)
+            this.numStartingChips = 50;      //number of starting chips
+            this.dominionBonus = 1;          //the amount of bonus Dominions get when people use their quality
+            this.autoplay = false;           //whether play happens automatically globally
+            consoleLogLevel = 2;             //3 = verbose console, 2 = turn info, 1 = most basic
+        }
+
+        else {
+            this.rounds = propArray.rounds;
+            this.numPlayers = propArray.numPlayers;
+            this.humansPlaying = propArray.humansPlaying;
+            this.numQualities = propArray.numQualities;
+            this.numStartingChips = propArray.numStartingChips;
+            this.dominionBonus = propArray.dominionBonus;
+            this.autoplay = propArray.autoplay;
+            consoleLogLevel = propArray.consoleLogLevel;
+        }
 
         this.players = [];               //holds players
         this.watchers = [];              //holds who is watching the next action {"watcher": "bot1", "target" : bot2" }
@@ -76,6 +89,14 @@ var Game = Class.extend({
         this.play();
     },
 
+    reset: function(initObj) {
+        $("#game").html("");
+        $("#players").tabs("destroy");
+        $("#UITabs").html("");
+        $("#panels").html("");
+        this.init(initObj);
+    },
+
     createPlayers: function () {        //create players for game
         for (var x=0; x < (this.numPlayers - this.humansPlaying); x++) {        //create bots of random type
             var bot;
@@ -86,7 +107,7 @@ var Game = Class.extend({
             
             this.players.push(bot);                             //add it to players
             */
-            bot = new RandomBot("randomBot" + x, true, this);
+            bot = new RandomBot("regretBot" + x, true, this);
             this.players.push(bot);
         }
 
@@ -130,9 +151,30 @@ var Game = Class.extend({
 
     initUI: function () {      //create UI
 
-        //create game-wide info window
-        var gameInfoHtml = "<p>Players: "+ this.numPlayers +" ("+ this.humansPlaying +" human / "+ (this.numPlayers - this.humansPlaying) +" bot)</p><p>Current Round: "+ this.currentRound +"/"+ this.rounds +"</p><p>Number of Qualities: "+ this.numQualities +"</p><p>Number of Starting Chips: "+ this.numStartingChips +"</p>";
-        $("#game").append(gameInfoHtml);
+        $("#game").append('<img src="images/gear.png" id="gear" /><div id="gameSettings"></div><div id="consoleToggle">Console</div>');      //add settings menu div and gear icon
+
+        var playersHtml = "<p>Players: <input type='text' id='humans' value='"+ this.humansPlaying +"'> humans / <input type='text' id='bots' value='"+ (this.numPlayers - this.humansPlaying) +"'> bots</p>";
+        //var roundsHtml = "<p>Round <span id='currRound'>"+ this.currentRound +"</span> of <input type='text' id='numRounds' value='"+ this.rounds +"'></p>";
+        var roundsHtml = "<p>Rounds: <input type='text' id='numRounds' value='"+ this.rounds +"'></p>";
+        var numQualHtml = "<p>Number of Qualities: <input type='text' id='numQuals' value='"+ this.numQualities +"'></p>";
+        var numStartChipHtml = "<p>Number of Starting Chips: <input type='text' id='numStartChips' value='"+ this.numStartingChips +"'></p>";
+        var autoplayHtml = "<p><input type='checkbox' id='autoplayCheck' checked><label for='autoplayCheck'>Autoplay?</label></p>"
+        var changeButton = "<input type='submit' value='Update params and restart' id='changeButton'>";
+
+        $("#gameSettings").append(playersHtml + roundsHtml + numQualHtml + numStartChipHtml + autoplayHtml + changeButton);
+
+        $( "#changeButton" ).click(function() {
+            var initObj = {
+                "rounds": parseInt($("#numRounds").val(),10),
+                "numPlayers" : parseInt($("#humans").val(),10) + parseInt($("#bots").val(),10),
+                "humansPlaying" : parseInt($("#humans").val(),10),
+                "numQualities" : parseInt($("#numQuals").val(),10),
+                "numStartingChips" : parseInt($("#numStartChips").val(),10),
+                "dominionBonus" : game.dominionBonus,
+                "autoplay" : $("#autoplayCheck").attr('checked', true)
+            };
+            game.reset(initObj);
+        });
 
         for (var x=0; x < this.players.length; x++) {       //for each player
 
@@ -145,6 +187,9 @@ var Game = Class.extend({
         }
 
         $("#players").tabs();
+
+        $("#gear").click(function() { $("#gameSettings").toggle( "drop", 500 ); });
+        $("#consoleToggle").click(function() { $("#console").toggle( "drop", {"direction":"up"},500 ); });
 
         consoleLog(3, "initialized display!");
     },
@@ -218,11 +263,13 @@ var Game = Class.extend({
                 html: '<h2>Info</h2>',
             }).appendTo('#' + this.players[playerIndex].name + 'Panel');
 
+        $('#' + this.players[playerIndex].name + 'Panel').append("<div id='" + this.players[playerIndex].name + "Controls'></div>");
+
         jQuery('<div/>', {          //make move button
                 class: 'makeMove',
                 id: this.players[playerIndex].name + 'makeMove',
                 html: 'Make move',
-            }).appendTo('#' + this.players[playerIndex].name + 'Panel');
+            }).appendTo('#' + this.players[playerIndex].name + 'Controls');
 
         $( "#" + this.players[playerIndex].name + "makeMove" ).click(function() {
             this.players[this.currentPlayer].takeTurn(this);
@@ -249,6 +296,10 @@ var Game = Class.extend({
             $("#" + this.players[playerIndex].name + "Stats .tableLabel").append("<td class='"+ this.qualities[x].name +"'>" + this.qualities[x].name + "</td>");
 
         }
+
+        $("#" + this.players[playerIndex].name + "Panel").append('<div id="console"><label for="consoleLevel">Console Level</label><select name="consoleLevel" id="consoleLevel"><option>3</option><option>2</option><option selected="selected">1</option></select></div>');
+
+        $("#consoleLevel").change(function() { changeConsoleLevel($("#consoleLevel option:selected").text()) });
     },
 
     updateUI: function ()  {   //update the UI with values
@@ -322,15 +373,15 @@ var Game = Class.extend({
 
         if (result == "lost") { 
             attackerRange = [1, (targetResponse.amountUsed - 1)];      //we know the attacker had a least 1 less than defender, possibly just 1
-            defenderRange = [(amountUsed + 1), -1];                   //we know the defender must have at least 1 more than attacker
+            defenderRange = [(amountUsed + 1), -1];              //we know the defender must have at least 1 more than attacker, but nothing else
         }
         if (result == "won") { 
             attackerRange = [(targetResponse.amountUsed + 1), -1];    //we know the attacker had at least one more than defender
             defenderRange = [0, (amountUsed - 1)];                    //we know defender had at least one less max than attacker
         }
         if (result == "tie") { 
-            attackerRange = [amountUsed, amountUsed];
-            defenderRange = [amountUsed, amountUsed];
+            attackerRange = [amountUsed, -1];
+            defenderRange = [targetResponse.amountUsed, -1];
         }
 
         var attackersFact = new Fact(targetName, targetResponse.quality, defenderRange[0], defenderRange[1]);    //the pryer's learned fact ABOUT the defender
@@ -367,26 +418,46 @@ var Game = Class.extend({
         }
 
         else if (this.autoplay || this.players[this.currentPlayer].autoplay) {      //otherwise, if autoplay for game is on or autoplay for player is on
-            consoleLog(3, "------------------------------");
-            consoleLog(3, this.players[this.currentPlayer].name + "'s Turn");
-            consoleLog(3, "------------------------------");
+            consoleLog(3, "<h2>" + this.players[this.currentPlayer].name + "'s Turn</h2>");
+            
+            var oldAcc = 0;
+            for (var x=0; x < this.players.length; x++) {
+                var otherPlayer = this.players[x];
+                var thisPlayer = this.players[this.currentPlayer];
+                if (otherPlayer.name !== thisPlayer.name) {         //if the otherplayer isn't yourself...
+                    var otherModel = $.grep(thisPlayer.players, function (h) { return h.name == otherPlayer.name })[0];     //grab their model
+                    oldAcc += this.getModelAccuracy(otherModel, otherPlayer).total;     //add the accuracy of it to total
+                }
+            }
+            consoleLog(3, this.players[this.currentPlayer].name + "'s old model accuracy: " + oldAcc);
             this.players[this.currentPlayer].takeTurn(this);                        //take turn
+            
+            var newAcc = 0;
+            for (var x=0; x < this.players.length; x++) {
+                var otherPlayer = this.players[x];
+                var thisPlayer = this.players[this.currentPlayer];
+                if (otherPlayer.name !== thisPlayer.name) {         //if the otherplayer isn't yourself...
+                    var otherModel = $.grep(thisPlayer.players, function (h) { return h.name == otherPlayer.name })[0];     //grab their model
+                    newAcc += this.getModelAccuracy(otherModel, otherPlayer).total;     //add the accuracy of it to total
+                }
+            }
+            
+            consoleLog(3, this.players[this.currentPlayer].name + "'s new model accuracy: " + newAcc);
+            consoleLog(2, this.players[this.currentPlayer].name + "'s model accuracy changed by " + (oldAcc - newAcc));
+
             this.play();                                                            //call play again
         }
     },
 
     decideWinner: function () {
-        consoleLog(2, "-----------------------------------------------------------");
-        consoleLog(2, "**************TIME FOR FINAL GUESSES**************");
-        consoleLog(2, "-----------------------------------------------------------");
+        consoleLog(2, "<h2>TIME FOR FINAL GUESSES</h2>");
 
 
         for (var x=0; x < this.players.length; x++) {       //for every player...
             var tempPlayer = this.players[x];
-            consoleLog(3, "guessing about " + tempPlayer.name);
 
             for (var y=0; y < tempPlayer.secrets.length; y++) {     //for every secret...
-                consoleLog(3, "specifically, their " + tempPlayer.secrets[y].quality + " (which is " + this.players[x].secrets[y].value[0] + ")");
+                consoleLog(2, "guessing about " + tempPlayer.name + "'s " + tempPlayer.secrets[y].quality + " (which is " + this.players[x].secrets[y].value[0] + ")");
                 var tempSecret = tempPlayer.secrets[y];
                 var guess = this.getClosestGuess(tempPlayer, tempSecret.quality);        //populate each player's secrets with best guess and final amount
                 var finalValue = Math.abs(guess.guess - tempSecret.value[0]);
@@ -396,7 +467,7 @@ var Game = Class.extend({
                 this.players[x].secrets[y].bestGuesser = guess.guesser.name;
                 this.players[x].secrets[y].bestGuess = guess.guess;
 
-                consoleLog(3, "---the best guess about " + tempPlayer.name + "'s " + tempPlayer.secrets[y].quality + " is " + guess.guesser.name + "'s guess of " + guess.guess);
+                consoleLog(2, "---the best guess about " + tempPlayer.name + "'s " + tempPlayer.secrets[y].quality + " is " + guess.guesser.name + "'s guess of " + guess.guess);
             }
         }
 
@@ -434,6 +505,25 @@ var Game = Class.extend({
         });
 
         return closest;
+    },
+
+    getModelAccuracy: function (model, actual) {            //this returns a float and an array of floats of avg and per-cat accuracy
+
+        var totalAccuracy = 0;
+        var qualAccuracies = [];
+        for (var x=0; x < model.secrets.length; x++) {
+        //for each quality, take the difference between it and the actual value * percentage of range it is
+            var actualVal = $.grep(actual.secrets, function (h) { return h.quality == model.secrets[x].quality })[0].value[0];
+            var modelVal = model.secrets[x].value;
+            var accuracy = 0;
+            for (var y = modelVal[0]; y <= modelVal[1]; y++) {
+                accuracy += Math.abs(actualVal - y) / (modelVal[1] - modelVal[0]);
+            }
+
+            totalAccuracy += accuracy;
+        }
+
+        return ({"total" : totalAccuracy, "qualAccuracies" : qualAccuracies})
     },
 
     updateWatchers: function (theFact) {
